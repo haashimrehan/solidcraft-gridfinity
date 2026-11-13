@@ -1,0 +1,172 @@
+{
+  "id": "solidcraft-gridfinity",
+  "name": "Gridfinity",
+  "version": "0.1.0",
+  "description": "Gridfinity bins and baseplates from a grid size: feet, stacking lip, magnet holes, dividers, scoop and label tab, as editable sketches and extrudes.",
+  "capabilities": [
+    "commands@0.1"
+  ],
+  "runtime": {
+    "module": "plugin.wasm",
+    "entries": [
+      {
+        "name": "make-bin",
+        "effect": "edit",
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "width",
+            "depth",
+            "height",
+            "wall",
+            "stacking_lip",
+            "magnet_holes",
+            "compartments_x",
+            "compartments_y",
+            "scoop",
+            "label_tab"
+          ],
+          "properties": {
+            "width": {
+              "type": "integer",
+              "title": "Width",
+              "description": "Grid units along X, 42 mm each",
+              "default": 2,
+              "minimum": 1,
+              "maximum": 6,
+              "unit": "u"
+            },
+            "depth": {
+              "type": "integer",
+              "title": "Depth",
+              "description": "Grid units along Y, 42 mm each",
+              "default": 1,
+              "minimum": 1,
+              "maximum": 6,
+              "unit": "u"
+            },
+            "height": {
+              "type": "integer",
+              "title": "Height",
+              "description": "Height units of 7 mm, without the stacking lip",
+              "default": 3,
+              "minimum": 2,
+              "maximum": 20,
+              "unit": "u"
+            },
+            "wall": {
+              "type": "number",
+              "title": "Wall thickness",
+              "description": "Thickness of the walls and dividers",
+              "default": 1.2,
+              "minimum": 0.8,
+              "maximum": 2.4,
+              "unit": "mm"
+            },
+            "stacking_lip": {
+              "type": "boolean",
+              "title": "Stacking lip",
+              "description": "A lip on the rim that the feet of another bin sit in",
+              "default": true
+            },
+            "magnet_holes": {
+              "type": "boolean",
+              "title": "Magnet holes",
+              "description": "Four 6.5 x 2.4 mm pockets under every cell, for 6 x 2 mm magnets",
+              "default": true
+            },
+            "compartments_x": {
+              "type": "integer",
+              "title": "Compartments along X",
+              "description": "How many compartments side by side along X",
+              "default": 1,
+              "minimum": 1,
+              "maximum": 8
+            },
+            "compartments_y": {
+              "type": "integer",
+              "title": "Compartments along Y",
+              "description": "How many compartments side by side along Y",
+              "default": 1,
+              "minimum": 1,
+              "maximum": 8
+            },
+            "scoop": {
+              "type": "boolean",
+              "title": "Scoop",
+              "description": "A curved ramp along the front wall, so small parts slide out",
+              "default": false
+            },
+            "label_tab": {
+              "type": "boolean",
+              "title": "Label tab",
+              "description": "A shelf along the back wall for a label",
+              "default": false
+            }
+          }
+        },
+        "slots": [
+          {
+            "kind": "menu",
+            "name": "Bin"
+          }
+        ]
+      },
+      {
+        "name": "make-baseplate",
+        "effect": "edit",
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "width",
+            "depth"
+          ],
+          "properties": {
+            "width": {
+              "type": "integer",
+              "title": "Width",
+              "description": "Grid units along X, 42 mm each",
+              "default": 3,
+              "minimum": 1,
+              "maximum": 6,
+              "unit": "u"
+            },
+            "depth": {
+              "type": "integer",
+              "title": "Depth",
+              "description": "Grid units along Y, 42 mm each",
+              "default": 2,
+              "minimum": 1,
+              "maximum": 6,
+              "unit": "u"
+            }
+          }
+        },
+        "slots": [
+          {
+            "kind": "menu",
+            "name": "Baseplate"
+          }
+        ]
+      }
+    ],
+    "commands": [
+      "sketch.create",
+      "sketch.rectangle.rounded",
+      "sketch.rectangle.two_point",
+      "sketch.circle.center",
+      "sketch.line",
+      "sketch.arc.three_point",
+      "sketch.finish",
+      "solid.extrude",
+      "solid.box",
+      "solid.pattern.rectangular",
+      "solid.combine"
+    ],
+    "limits": {
+      "fuel": 200000000,
+      "memory_mib": 64,
+      "deadline_ms": 30000
+    }
+  }
+}

@@ -1,0 +1,5 @@
+target/
+dist/
+demo/raw.mp4
+demo/raw.marks.txt
+demo/*.fcproj
