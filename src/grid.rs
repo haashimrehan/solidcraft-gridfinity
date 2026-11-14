@@ -39,9 +39,14 @@ pub const LIP_LAND: f64 = 0.25;
 pub const LIP_H: f64 = LIP_CHAMFER + LIP_WALL + LIP_FLARE - LIP_LAND;
 /// Top of the bin floor: one height unit.
 pub const FLOOR_Z: f64 = 7.0;
-/// Magnet pocket: 6 mm magnets, press fit.
+/// Default magnet pocket: 6 x 2 mm magnets, press fit.
 pub const MAGNET_D: f64 = 6.5;
 pub const MAGNET_DEPTH: f64 = 2.4;
+/// Pocket sizes a user may ask for. The widest still leaves about half a millimetre of foot
+/// around it at the bottom of a bin (pocket edge at 13 + 4.25 mm, foot edge at 17.8 mm); the
+/// deepest stays under a bin's 4.75 mm feet.
+pub const MAGNET_D_RANGE: (f64, f64) = (3.0, 8.5);
+pub const MAGNET_DEPTH_RANGE: (f64, f64) = (1.0, 4.0);
 /// Magnet centres from the cell centre.
 pub const MAGNET_OFFSET: f64 = 13.0;
 /// Room left under the lip for the feet of the bin stacked on top.
@@ -55,9 +60,9 @@ pub const PLATE_H: f64 = PLATE_CHAMFER + PLATE_WALL + PLATE_FLARE;
 pub const PLATE_R: f64 = 4.0;
 /// Flat left on top of each baseplate ridge instead of a knife edge.
 pub const PLATE_LAND: f64 = 0.1;
-/// Solid floor under the pockets of a magnet baseplate: a magnet pocket and a 0.6 mm skin
-/// under it, so the magnets sit flush with the floor, right under those of the bin.
-pub const PLATE_FLOOR: f64 = MAGNET_DEPTH + 0.6;
+/// Skin left under the magnet pockets of a magnet baseplate, whose floor is the pocket depth
+/// plus this: the magnets sit flush with the floor, right under those of the bin.
+pub const PLATE_SKIN: f64 = 0.6;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Bin {
@@ -67,6 +72,7 @@ pub struct Bin {
     pub wall: f64,
     pub lip: bool,
     pub magnets: bool,
+    pub magnet: Magnet,
     pub compartments_x: u32,
     pub compartments_y: u32,
     pub scoop: bool,
@@ -78,6 +84,32 @@ pub struct Baseplate {
     pub width: u32,
     pub depth: u32,
     pub magnets: bool,
+    pub magnet: Magnet,
+}
+
+/// The size of a magnet pocket.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Magnet {
+    pub diameter: f64,
+    pub depth: f64,
+}
+
+impl Magnet {
+    fn from_json(v: &Value) -> Self {
+        let num = |k: &str, d: f64| v.get(k).and_then(Value::as_f64).unwrap_or(d);
+        Magnet { diameter: num("magnet_diameter", MAGNET_D), depth: num("magnet_depth", MAGNET_DEPTH) }
+    }
+
+    fn validate(&self) -> Result<(), Invalid> {
+        let ((d0, d1), (h0, h1)) = (MAGNET_D_RANGE, MAGNET_DEPTH_RANGE);
+        if !(self.diameter >= d0 && self.diameter <= d1) {
+            return Err(bad("magnet_diameter", format!("{d0} to {d1} mm")));
+        }
+        if !(self.depth >= h0 && self.depth <= h1) {
+            return Err(bad("magnet_depth", format!("{h0} to {h1} mm")));
+        }
+        Ok(())
+    }
 }
 
 pub type Invalid = (String, String);
@@ -97,6 +129,7 @@ impl Bin {
             wall: v.get("wall").and_then(Value::as_f64).unwrap_or(1.2),
             lip: flag("stacking_lip", true),
             magnets: flag("magnet_holes", true),
+            magnet: Magnet::from_json(v),
             compartments_x: int("compartments_x", 1),
             compartments_y: int("compartments_y", 1),
             scoop: flag("scoop", false),
@@ -149,7 +182,7 @@ impl Bin {
                 return Err(bad(field, format!("each compartment would be {room:.1} mm wide; use fewer")));
             }
         }
-        Ok(())
+        self.magnet.validate()
     }
 }
 
@@ -157,13 +190,13 @@ impl Baseplate {
     pub fn from_json(v: &Value) -> Self {
         let int = |k: &str, d: u32| v.get(k).and_then(Value::as_f64).map_or(d, |n| n.round().max(0.0) as u32);
         let magnets = v.get("magnet_holes").and_then(Value::as_bool).unwrap_or(false);
-        Baseplate { width: int("width", 3), depth: int("depth", 2), magnets }
+        Baseplate { width: int("width", 3), depth: int("depth", 2), magnets, magnet: Magnet::from_json(v) }
     }
 
     /// Height of the floor under the pockets: none for a plain frame.
     pub fn floor(&self) -> f64 {
         if self.magnets {
-            PLATE_FLOOR
+            self.magnet.depth + PLATE_SKIN
         } else {
             0.0
         }
@@ -176,7 +209,7 @@ impl Baseplate {
         if !(1..=MAX_GRID).contains(&self.depth) {
             return Err(bad("depth", "1 to 6 grid units"));
         }
-        Ok(())
+        self.magnet.validate()
     }
 }
 
@@ -227,6 +260,20 @@ impl<R: Runner> Build<'_, R> {
             self.body = created(&made).into_iter().next().unwrap_or_else(|| body.to_owned());
         }
         Ok(())
+    }
+
+    /// Four magnet pockets around `cell`, cut up from height `z` into the current body.
+    fn magnet_holes(&mut self, cell: [f64; 2], z: f64, m: Magnet) -> Result<(), String> {
+        let made = self.r.run("sketch.create", json!({"plane": "XY", "offset": z, "name": "Magnet circles"}))?;
+        for (sx, sy) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
+            self.r.run(
+                "sketch.circle.center",
+                json!({"center": [cell[0] + sx * MAGNET_OFFSET, cell[1] + sy * MAGNET_OFFSET], "radius": m.diameter / 2.0}),
+            )?;
+        }
+        self.r.run("sketch.finish", json!({}))?;
+        let circles = made.get("sketch").cloned().unwrap_or(Value::Null);
+        self.extrude(&circles, "Magnet holes", 0.0, m.depth, 0.0, "cut", None)
     }
 
     /// Copy the current body `count - 1` times along `dir` at the grid pitch; returns the copies.
@@ -407,16 +454,7 @@ pub fn make_bin<R: Runner>(r: &mut R, b: &Bin) -> Result<Value, String> {
     k.extrude(&mid, "Foot wall", 0.0, FOOT_WALL, 0.0, "join", None)?;
     k.extrude(&mid, "Foot flare", FOOT_WALL, FOOT_FLARE, 45.0, "join", None)?;
     if b.magnets {
-        let made = k.r.run("sketch.create", json!({"plane": "XY", "name": "Magnet circles"}))?;
-        for (sx, sy) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
-            k.r.run(
-                "sketch.circle.center",
-                json!({"center": [cell[0] + sx * MAGNET_OFFSET, cell[1] + sy * MAGNET_OFFSET], "radius": MAGNET_D / 2.0}),
-            )?;
-        }
-        k.r.run("sketch.finish", json!({}))?;
-        let circles = made.get("sketch").cloned().unwrap_or(Value::Null);
-        k.extrude(&circles, "Magnet holes", 0.0, MAGNET_DEPTH, 0.0, "cut", None)?;
+        k.magnet_holes(cell, 0.0, b.magnet)?;
     }
 
     // A foot under every cell: a row of feet as one body (they do not touch each other), a copy
@@ -433,6 +471,7 @@ pub fn make_bin<R: Runner>(r: &mut R, b: &Bin) -> Result<Value, String> {
         "wall_mm": t,
         "stacking_lip": b.lip,
         "magnet_holes": if b.magnets { b.width * b.depth * 4 } else { 0 },
+        "magnet_mm": [b.magnet.diameter, b.magnet.depth],
         "compartments": b.compartments_x * b.compartments_y,
     }))
 }
@@ -470,16 +509,7 @@ pub fn make_baseplate<R: Runner>(r: &mut R, p: &Baseplate) -> Result<Value, Stri
 
     // Magnet pockets open into the pocket floor, right under the bin's own magnets.
     if p.magnets {
-        let made = k.r.run("sketch.create", json!({"plane": "XY", "offset": floor - MAGNET_DEPTH, "name": "Magnet circles"}))?;
-        for (sx, sy) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
-            k.r.run(
-                "sketch.circle.center",
-                json!({"center": [cell[0] + sx * MAGNET_OFFSET, cell[1] + sy * MAGNET_OFFSET], "radius": MAGNET_D / 2.0}),
-            )?;
-        }
-        k.r.run("sketch.finish", json!({}))?;
-        let circles = made.get("sketch").cloned().unwrap_or(Value::Null);
-        k.extrude(&circles, "Magnet holes", 0.0, MAGNET_DEPTH, 0.0, "cut", None)?;
+        k.magnet_holes(cell, PLATE_SKIN, p.magnet)?;
     }
 
     k.repeat("Cell row", [1, 0, 0], p.width, None)?;
@@ -494,5 +524,6 @@ pub fn make_baseplate<R: Runner>(r: &mut R, p: &Baseplate) -> Result<Value, Stri
         "grid": [p.width, p.depth],
         "size_mm": [l, w, height],
         "magnet_holes": if p.magnets { p.width * p.depth * 4 } else { 0 },
+        "magnet_mm": [p.magnet.diameter, p.magnet.depth],
     }))
 }

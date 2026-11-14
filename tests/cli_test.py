@@ -76,7 +76,7 @@ def bin_volume(p):
     top = h + (4.15 if lip else 0)
     v = nx * ny * FOOT + area(hx, hy, 3.75) * (top - 4.75)
     if magnets:
-        v -= nx * ny * 4 * math.pi * 3.25**2 * 2.4
+        v -= nx * ny * 4 * math.pi * (p.get("magnet_diameter", 6.5) / 2) ** 2 * p.get("magnet_depth", 2.4)
     if lip:
         s = 2.6 - t
         v -= taper(hx - 1.9, hy - 1.9, 1.85, 1.65)  # the flare, up to the rim
@@ -96,10 +96,11 @@ def bin_volume(p):
 def plate_volume(p):
     nx, ny = p["width"], p["depth"]
     pocket = taper(18.05, 18.05, 1.05, 0.7) + area(18.75, 18.75, 1.75) * 1.8 + taper(18.75, 18.75, 1.75, 2.15)
-    floor = 3.0 if p.get("magnet_holes") else 0.0
+    md, mh = p.get("magnet_diameter", 6.5), p.get("magnet_depth", 2.4)
+    floor = mh + 0.6 if p.get("magnet_holes") else 0.0
     v = area(21 * nx, 21 * ny, 4) * (4.65 + floor) - nx * ny * pocket
     if floor:
-        v -= nx * ny * 4 * math.pi * 3.25**2 * 2.4
+        v -= nx * ny * 4 * math.pi * (md / 2) ** 2 * mh
     return v, (42 * nx, 42 * ny, 4.65 + floor)
 
 
@@ -133,6 +134,8 @@ for label, p in {
     "3x2x6 thick": dict(width=3, depth=2, height=6, wall=2.0),
     "2x2x4 dividers": dict(width=2, depth=2, height=4, stacking_lip=False, compartments_x=3, compartments_y=2),
     "1x4x2": dict(width=1, depth=4, height=2),
+    "2x1x3 8x3 magnets": dict(width=2, depth=1, height=3, magnet_diameter=8.5, magnet_depth=3.4),
+    "1x1x3 small magnets": dict(width=1, depth=1, height=3, magnet_diameter=3.2, magnet_depth=1.2),
 }.items():
     sc = os.path.join(TMP, "out", label.split()[0] + ".sc")
     built(label, "make-bin", p, bin_volume(p), save=sc)
@@ -196,6 +199,7 @@ for label, p in {
     "4x3": dict(width=4, depth=3),
     "1x1 magnets": dict(width=1, depth=1, magnet_holes=True),
     "3x2 magnets": dict(width=3, depth=2, magnet_holes=True),
+    "2x2 8x3 magnets": dict(width=2, depth=2, magnet_holes=True, magnet_diameter=8.5, magnet_depth=3.4),
 }.items():
     built(f"baseplate {label}", "make-baseplate", p, plate_volume(p), save=os.path.join(TMP, "out", f"plate-{label.replace(' ', '-')}.sc"))
 
@@ -232,6 +236,8 @@ for label, entry, p, field in [
     ("too many compartments", "make-bin", dict(width=1, compartments_x=8), "compartments_x"),
     ("6x6 bin", "make-bin", dict(width=6, depth=6), "cells"),
     ("baseplate depth 7", "make-baseplate", dict(depth=7), "depth"),
+    ("magnet diameter 9", "make-bin", dict(magnet_diameter=9), "magnet_diameter"),
+    ("magnet depth 5", "make-baseplate", dict(magnet_holes=True, magnet_depth=5), "magnet_depth"),
 ]:
     out = run([plugin(entry, p)], fail_ok=True)
     check(f"refused: {label}", isinstance(out, str) and field in out, out.strip()[-160:] if isinstance(out, str) else "it ran")

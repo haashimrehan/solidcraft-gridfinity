@@ -72,8 +72,26 @@
             "magnet_holes": {
               "type": "boolean",
               "title": "Magnet holes",
-              "description": "Four 6.5 x 2.4 mm pockets under every cell, for 6 x 2 mm magnets",
+              "description": "Four magnet pockets under every cell, 13 mm from its centre",
               "default": true
+            },
+            "magnet_diameter": {
+              "type": "number",
+              "title": "Magnet hole diameter",
+              "description": "Diameter of each magnet pocket: 6.5 mm fits 6 mm magnets",
+              "default": 6.5,
+              "minimum": 3,
+              "maximum": 8.5,
+              "unit": "mm"
+            },
+            "magnet_depth": {
+              "type": "number",
+              "title": "Magnet hole depth",
+              "description": "Depth of each magnet pocket: 2.4 mm fits 2 mm magnets",
+              "default": 2.4,
+              "minimum": 1,
+              "maximum": 4,
+              "unit": "mm"
             },
             "compartments_x": {
               "type": "integer",
@@ -143,8 +161,26 @@
             "magnet_holes": {
               "type": "boolean",
               "title": "Magnet holes",
-              "description": "A 3 mm floor under the pockets with four 6.5 x 2.4 mm magnet pockets in every cell, under those of the bins",
+              "description": "A solid floor under the pockets with four magnet pockets in every cell, under those of the bins",
               "default": false
+            },
+            "magnet_diameter": {
+              "type": "number",
+              "title": "Magnet hole diameter",
+              "description": "Diameter of each magnet pocket: 6.5 mm fits 6 mm magnets",
+              "default": 6.5,
+              "minimum": 3,
+              "maximum": 8.5,
+              "unit": "mm"
+            },
+            "magnet_depth": {
+              "type": "number",
+              "title": "Magnet hole depth",
+              "description": "Depth of each magnet pocket: 2.4 mm fits 2 mm magnets; the floor is 0.6 mm more",
+              "default": 2.4,
+              "minimum": 1,
+              "maximum": 4,
+              "unit": "mm"
             }
           }
         },
