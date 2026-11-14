@@ -87,20 +87,38 @@ pub struct Baseplate {
     pub magnet: Magnet,
 }
 
+/// Common round magnets, diameter x thickness in mm, with the pocket each one gets: 0.5 mm wider
+/// and 0.4 mm deeper than the magnet. `custom` takes `magnet_diameter` and `magnet_depth` instead.
+pub const MAGNET_SIZES: [(&str, f64, f64); 5] = [("5x2", 5.5, 2.4), ("6x2", 6.5, 2.4), ("6x3", 6.5, 3.4), ("8x2", 8.5, 2.4), ("8x3", 8.5, 3.4)];
+pub const MAGNET_CUSTOM: &str = "custom";
+
 /// The size of a magnet pocket.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Magnet {
+    /// One of `MAGNET_SIZES`, or `custom`.
+    pub size: String,
     pub diameter: f64,
     pub depth: f64,
 }
 
 impl Magnet {
     fn from_json(v: &Value) -> Self {
+        let size = v.get("magnet_size").and_then(Value::as_str).unwrap_or("6x2").to_owned();
         let num = |k: &str, d: f64| v.get(k).and_then(Value::as_f64).unwrap_or(d);
-        Magnet { diameter: num("magnet_diameter", MAGNET_D), depth: num("magnet_depth", MAGNET_DEPTH) }
+        let (diameter, depth) = if size == MAGNET_CUSTOM {
+            (num("magnet_diameter", MAGNET_D), num("magnet_depth", MAGNET_DEPTH))
+        } else {
+            // An unknown size is refused by `validate`.
+            MAGNET_SIZES.iter().find(|(n, ..)| *n == size).map_or((f64::NAN, f64::NAN), |&(_, d, h)| (d, h))
+        };
+        Magnet { size, diameter, depth }
     }
 
     fn validate(&self) -> Result<(), Invalid> {
+        if self.size != MAGNET_CUSTOM && !MAGNET_SIZES.iter().any(|(n, ..)| *n == self.size) {
+            let names: Vec<&str> = MAGNET_SIZES.iter().map(|(n, ..)| *n).chain([MAGNET_CUSTOM]).collect();
+            return Err(bad("magnet_size", format!("one of {}", names.join(", "))));
+        }
         let ((d0, d1), (h0, h1)) = (MAGNET_D_RANGE, MAGNET_DEPTH_RANGE);
         if !(self.diameter >= d0 && self.diameter <= d1) {
             return Err(bad("magnet_diameter", format!("{d0} to {d1} mm")));
@@ -263,7 +281,7 @@ impl<R: Runner> Build<'_, R> {
     }
 
     /// Four magnet pockets around `cell`, cut up from height `z` into the current body.
-    fn magnet_holes(&mut self, cell: [f64; 2], z: f64, m: Magnet) -> Result<(), String> {
+    fn magnet_holes(&mut self, cell: [f64; 2], z: f64, m: &Magnet) -> Result<(), String> {
         let made = self.r.run("sketch.create", json!({"plane": "XY", "offset": z, "name": "Magnet circles"}))?;
         for (sx, sy) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
             self.r.run(
@@ -454,7 +472,7 @@ pub fn make_bin<R: Runner>(r: &mut R, b: &Bin) -> Result<Value, String> {
     k.extrude(&mid, "Foot wall", 0.0, FOOT_WALL, 0.0, "join", None)?;
     k.extrude(&mid, "Foot flare", FOOT_WALL, FOOT_FLARE, 45.0, "join", None)?;
     if b.magnets {
-        k.magnet_holes(cell, 0.0, b.magnet)?;
+        k.magnet_holes(cell, 0.0, &b.magnet)?;
     }
 
     // A foot under every cell: a row of feet as one body (they do not touch each other), a copy
@@ -509,7 +527,7 @@ pub fn make_baseplate<R: Runner>(r: &mut R, p: &Baseplate) -> Result<Value, Stri
 
     // Magnet pockets open into the pocket floor, right under the bin's own magnets.
     if p.magnets {
-        k.magnet_holes(cell, PLATE_SKIN, p.magnet)?;
+        k.magnet_holes(cell, PLATE_SKIN, &p.magnet)?;
     }
 
     k.repeat("Cell row", [1, 0, 0], p.width, None)?;

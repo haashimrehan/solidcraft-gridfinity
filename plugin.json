@@ -75,10 +75,17 @@
               "description": "Four magnet pockets under every cell, 13 mm from its centre",
               "default": true
             },
+            "magnet_size": {
+              "type": "string",
+              "title": "Magnet size",
+              "description": "Diameter x thickness of the magnets in mm; each pocket is 0.5 mm wider and 0.4 mm deeper. Custom takes the hole diameter and depth below",
+              "enum": ["5x2", "6x2", "6x3", "8x2", "8x3", "custom"],
+              "default": "6x2"
+            },
             "magnet_diameter": {
               "type": "number",
               "title": "Magnet hole diameter",
-              "description": "Diameter of each magnet pocket: 6.5 mm fits 6 mm magnets",
+              "description": "With a custom magnet size: the diameter of each pocket",
               "default": 6.5,
               "minimum": 3,
               "maximum": 8.5,
@@ -87,7 +94,7 @@
             "magnet_depth": {
               "type": "number",
               "title": "Magnet hole depth",
-              "description": "Depth of each magnet pocket: 2.4 mm fits 2 mm magnets",
+              "description": "With a custom magnet size: the depth of each pocket",
               "default": 2.4,
               "minimum": 1,
               "maximum": 4,
@@ -164,10 +171,17 @@
               "description": "A solid floor under the pockets with four magnet pockets in every cell, under those of the bins",
               "default": false
             },
+            "magnet_size": {
+              "type": "string",
+              "title": "Magnet size",
+              "description": "Diameter x thickness of the magnets in mm; each pocket is 0.5 mm wider and 0.4 mm deeper. Custom takes the hole diameter and depth below",
+              "enum": ["5x2", "6x2", "6x3", "8x2", "8x3", "custom"],
+              "default": "6x2"
+            },
             "magnet_diameter": {
               "type": "number",
               "title": "Magnet hole diameter",
-              "description": "Diameter of each magnet pocket: 6.5 mm fits 6 mm magnets",
+              "description": "With a custom magnet size: the diameter of each pocket",
               "default": 6.5,
               "minimum": 3,
               "maximum": 8.5,
@@ -176,7 +190,7 @@
             "magnet_depth": {
               "type": "number",
               "title": "Magnet hole depth",
-              "description": "Depth of each magnet pocket: 2.4 mm fits 2 mm magnets; the floor is 0.6 mm more",
+              "description": "With a custom magnet size: the depth of each pocket; the floor is 0.6 mm more",
               "default": 2.4,
               "minimum": 1,
               "maximum": 4,

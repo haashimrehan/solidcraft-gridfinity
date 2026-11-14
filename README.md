@@ -25,7 +25,8 @@ The **Plugins > Gridfinity** menu then has two entries.
 | Wall thickness | 1.2 mm | Walls and dividers (0.8 to 2.4 mm) |
 | Stacking lip | on | A lip on the rim that the feet of another bin sit in |
 | Magnet holes | on | Four pockets under every cell, 13 mm from its centre |
-| Magnet hole diameter / depth | 6.5 / 2.4 mm | The pocket size: the defaults fit 6 x 2 mm magnets (3 to 8.5 mm across, 1 to 4 mm deep) |
+| Magnet size | 6x2 | The magnets, diameter x thickness in mm: 5x2, 6x2, 6x3, 8x2 or 8x3. Each pocket is 0.5 mm wider and 0.4 mm deeper than the magnet. |
+| Magnet hole diameter / depth | 6.5 / 2.4 mm | With magnet size *custom*: the pocket itself (3 to 8.5 mm across, 1 to 4 mm deep) |
 | Compartments along X / Y | 1 / 1 | Evenly spaced dividers (1 to 8 each way) |
 | Scoop | off | A curved ramp along the front wall, so small parts slide out |
 | Label tab | off | A shelf along the back wall with a 45 degree underside |
@@ -39,7 +40,7 @@ Width and depth in grid units (1 to 6 each). A plain frame of pockets, 4.65 mm t
 | Option | Default | Meaning |
 |---|---|---|
 | Magnet holes | off | A solid floor under the pockets, with four magnet pockets in every cell, 13 mm from its centre: right under the magnets of a bin. The floor is the pocket depth plus 0.6 mm, so with the default pockets it is 3 mm and the plate 7.65 mm tall. |
-| Magnet hole diameter / depth | 6.5 / 2.4 mm | As for bins |
+| Magnet size, hole diameter / depth | 6x2 | As for bins |
 
 ## What it builds
 
