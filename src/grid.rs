@@ -55,6 +55,9 @@ pub const PLATE_H: f64 = PLATE_CHAMFER + PLATE_WALL + PLATE_FLARE;
 pub const PLATE_R: f64 = 4.0;
 /// Flat left on top of each baseplate ridge instead of a knife edge.
 pub const PLATE_LAND: f64 = 0.1;
+/// Solid floor under the pockets of a magnet baseplate: a magnet pocket and a 0.6 mm skin
+/// under it, so the magnets sit flush with the floor, right under those of the bin.
+pub const PLATE_FLOOR: f64 = MAGNET_DEPTH + 0.6;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Bin {
@@ -74,6 +77,7 @@ pub struct Bin {
 pub struct Baseplate {
     pub width: u32,
     pub depth: u32,
+    pub magnets: bool,
 }
 
 pub type Invalid = (String, String);
@@ -152,7 +156,17 @@ impl Bin {
 impl Baseplate {
     pub fn from_json(v: &Value) -> Self {
         let int = |k: &str, d: u32| v.get(k).and_then(Value::as_f64).map_or(d, |n| n.round().max(0.0) as u32);
-        Baseplate { width: int("width", 3), depth: int("depth", 2) }
+        let magnets = v.get("magnet_holes").and_then(Value::as_bool).unwrap_or(false);
+        Baseplate { width: int("width", 3), depth: int("depth", 2), magnets }
+    }
+
+    /// Height of the floor under the pockets: none for a plain frame.
+    pub fn floor(&self) -> f64 {
+        if self.magnets {
+            PLATE_FLOOR
+        } else {
+            0.0
+        }
     }
 
     pub fn validate(&self) -> Result<(), Invalid> {
@@ -426,15 +440,18 @@ pub fn make_bin<R: Runner>(r: &mut R, b: &Bin) -> Result<Value, String> {
 /// Build a baseplate centred on the origin, standing on Z 0.
 ///
 /// One cell is built as a square tile with its pocket, a row of tiles is joined, then the rows,
-/// and the four outer corners are rounded last, by the plate's outline.
+/// and the four outer corners are rounded last, by the plate's outline. With magnet holes the
+/// pockets stand on a solid floor with a magnet pocket under each corner of every cell.
 pub fn make_baseplate<R: Runner>(r: &mut R, p: &Baseplate) -> Result<Value, String> {
     p.validate().map_err(|(f, why)| format!("{f}: {why}"))?;
     let (l, w) = (p.width as f64 * PITCH, p.depth as f64 * PITCH);
-    let name = format!("Gridfinity baseplate {}x{}", p.width, p.depth);
+    let floor = p.floor();
+    let height = floor + PLATE_H;
+    let name = format!("Gridfinity baseplate {}x{}{}", p.width, p.depth, if p.magnets { " magnets" } else { "" });
     let cell = [-(p.width as f64 - 1.0) * PITCH / 2.0, -(p.depth as f64 - 1.0) * PITCH / 2.0];
     let made = r.run(
         "solid.box",
-        json!({"length": PITCH, "width": PITCH, "height": PLATE_H, "center": [cell[0], cell[1], PLATE_H / 2.0], "operation": "new", "name": "Cell", "body_name": name}),
+        json!({"length": PITCH, "width": PITCH, "height": height, "center": [cell[0], cell[1], height / 2.0], "operation": "new", "name": "Cell", "body_name": name}),
     )?;
     let plate = created(&made).into_iter().next().unwrap_or(name);
     let mut k = Build { r, body: plate.clone() };
@@ -445,22 +462,37 @@ pub fn make_baseplate<R: Runner>(r: &mut R, p: &Baseplate) -> Result<Value, Stri
     let mid = top - PLATE_FLARE;
     let base = mid - PLATE_CHAMFER;
     let radius = PLATE_R - PLATE_LAND;
-    let base_sketch = k.outline("Pocket base", 0.0, cell, [base; 2], radius - PLATE_FLARE - PLATE_CHAMFER)?;
+    let base_sketch = k.outline("Pocket base", floor, cell, [base; 2], radius - PLATE_FLARE - PLATE_CHAMFER)?;
     k.extrude(&base_sketch, "Pocket chamfer", 0.0, PLATE_CHAMFER, 45.0, "cut", None)?;
-    let mid_sketch = k.outline("Pocket profile", PLATE_CHAMFER, cell, [mid; 2], radius - PLATE_FLARE)?;
+    let mid_sketch = k.outline("Pocket profile", floor + PLATE_CHAMFER, cell, [mid; 2], radius - PLATE_FLARE)?;
     k.extrude(&mid_sketch, "Pocket wall", 0.0, PLATE_WALL, 0.0, "cut", None)?;
     k.extrude(&mid_sketch, "Pocket flare", PLATE_WALL, PLATE_FLARE + 0.5, 45.0, "cut", None)?;
+
+    // Magnet pockets open into the pocket floor, right under the bin's own magnets.
+    if p.magnets {
+        let made = k.r.run("sketch.create", json!({"plane": "XY", "offset": floor - MAGNET_DEPTH, "name": "Magnet circles"}))?;
+        for (sx, sy) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
+            k.r.run(
+                "sketch.circle.center",
+                json!({"center": [cell[0] + sx * MAGNET_OFFSET, cell[1] + sy * MAGNET_OFFSET], "radius": MAGNET_D / 2.0}),
+            )?;
+        }
+        k.r.run("sketch.finish", json!({}))?;
+        let circles = made.get("sketch").cloned().unwrap_or(Value::Null);
+        k.extrude(&circles, "Magnet holes", 0.0, MAGNET_DEPTH, 0.0, "cut", None)?;
+    }
 
     k.repeat("Cell row", [1, 0, 0], p.width, None)?;
     k.repeat("Cell rows", [0, 1, 0], p.depth, None)?;
 
     // Round the four outer corners: keep what lies inside the plate's outline.
     let outline = k.outline("Baseplate outline", 0.0, [0.0, 0.0], [l / 2.0, w / 2.0], PLATE_R)?;
-    k.extrude(&outline, "Corners", 0.0, PLATE_H + 1.0, 0.0, "intersect", None)?;
+    k.extrude(&outline, "Corners", 0.0, height + 1.0, 0.0, "intersect", None)?;
 
     Ok(json!({
         "body": plate,
         "grid": [p.width, p.depth],
-        "size_mm": [l, w, PLATE_H],
+        "size_mm": [l, w, height],
+        "magnet_holes": if p.magnets { p.width * p.depth * 4 } else { 0 },
     }))
 }

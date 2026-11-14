@@ -96,7 +96,11 @@ def bin_volume(p):
 def plate_volume(p):
     nx, ny = p["width"], p["depth"]
     pocket = taper(18.05, 18.05, 1.05, 0.7) + area(18.75, 18.75, 1.75) * 1.8 + taper(18.75, 18.75, 1.75, 2.15)
-    return area(21 * nx, 21 * ny, 4) * 4.65 - nx * ny * pocket, (42 * nx, 42 * ny, 4.65)
+    floor = 3.0 if p.get("magnet_holes") else 0.0
+    v = area(21 * nx, 21 * ny, 4) * (4.65 + floor) - nx * ny * pocket
+    if floor:
+        v -= nx * ny * 4 * math.pi * 3.25**2 * 2.4
+    return v, (42 * nx, 42 * ny, 4.65 + floor)
 
 
 def built(label, entry, p, expect=None, save=None):
@@ -186,8 +190,22 @@ added, ideal = scoop["volume_mm3"] - flat["volume_mm3"], (r * r - math.pi * r * 
 check(f"scoop: about {ideal:.0f} mm3 of ramp", 0.97 * ideal < added <= ideal + 1, f"got {added:.0f}")
 
 # Baseplates.
-for label, p in {"1x1": dict(width=1, depth=1), "3x2": dict(width=3, depth=2), "4x3": dict(width=4, depth=3)}.items():
-    built(f"baseplate {label}", "make-baseplate", p, plate_volume(p), save=os.path.join(TMP, "out", f"plate-{label}.sc"))
+for label, p in {
+    "1x1": dict(width=1, depth=1),
+    "3x2": dict(width=3, depth=2),
+    "4x3": dict(width=4, depth=3),
+    "1x1 magnets": dict(width=1, depth=1, magnet_holes=True),
+    "3x2 magnets": dict(width=3, depth=2, magnet_holes=True),
+}.items():
+    built(f"baseplate {label}", "make-baseplate", p, plate_volume(p), save=os.path.join(TMP, "out", f"plate-{label.replace(' ', '-')}.sc"))
+
+# Baseplate magnet pockets: under those of a bin, opening into the pocket floor.
+res = run([plugin("make-baseplate", dict(width=2, depth=1, magnet_holes=True)), {"command": "model.faces", "params": {"body": "Gridfinity baseplate 2x1 magnets"}}])
+faces = res[1]["faces"] if isinstance(res[1], dict) else res[1]
+pockets = {(round(f["cylinder"]["origin"][0], 3), round(f["cylinder"]["origin"][1], 3)) for f in faces if f.get("cylinder") and abs(f["cylinder"]["radius"] - 3.25) < 1e-6}
+check("2x1 magnet baseplate: 8 magnet pockets, 13 mm from each cell centre", pockets == want, str(sorted(pockets)))
+floors = {round(f["centroid"][2], 3) for f in faces if f.get("plane_normal") and f["plane_normal"][2] > 0.999}
+check("2x1 magnet baseplate: pockets 2.4 mm deep under a floor at 3 mm", {0.6, 3.0, 7.65} <= floors, str(sorted(floors)))
 
 # The largest sizes stay well inside the host's 30 second limit.
 big = dict(width=5, depth=5, height=3)
@@ -195,6 +213,7 @@ for label, entry, p, expect in [
     ("5x5x3 bin", "make-bin", big, bin_volume(big)),
     ("6x4 bin, 8x8 compartments", "make-bin", dict(width=6, depth=4, height=6, compartments_x=8, compartments_y=8, scoop=True, label_tab=True), None),
     ("6x6 baseplate", "make-baseplate", dict(width=6, depth=6), plate_volume(dict(width=6, depth=6))),
+    ("6x6 magnet baseplate", "make-baseplate", dict(width=6, depth=6, magnet_holes=True), plate_volume(dict(width=6, depth=6, magnet_holes=True))),
 ]:
     _, secs = built(label, entry, p, expect)
     check(f"{label}: under 20 s", secs < 20, f"{secs:.1f} s")

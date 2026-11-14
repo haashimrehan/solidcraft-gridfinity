@@ -139,6 +139,12 @@
               "minimum": 1,
               "maximum": 6,
               "unit": "u"
+            },
+            "magnet_holes": {
+              "type": "boolean",
+              "title": "Magnet holes",
+              "description": "A 3 mm floor under the pockets with four 6.5 x 2.4 mm magnet pockets in every cell, under those of the bins",
+              "default": false
             }
           }
         },

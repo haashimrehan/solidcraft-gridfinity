@@ -35,6 +35,10 @@ The bin is centred on the origin and stands on Z 0, the way it prints.
 
 Width and depth in grid units (1 to 6 each). A plain frame of pockets, 4.65 mm tall.
 
+| Option | Default | Meaning |
+|---|---|---|
+| Magnet holes | off | A 3 mm solid floor under the pockets, with four 6.5 x 2.4 mm pockets for 6 x 2 mm magnets in every cell, 13 mm from its centre: right under the magnets of a bin. The plate is then 7.65 mm tall. |
+
 ## What it builds
 
 - Outer size `42 n - 0.5` mm with 3.75 mm corners; feet with the 0.8 / 1.8 / 2.15 mm profile; a 7 mm floor.
@@ -42,7 +46,7 @@ Width and depth in grid units (1 to 6 each). A plain frame of pockets, 4.65 mm t
 - Dividers, the label tab and the scoop stop 1 mm under the lip, clear of the feet of a bin stacked on top.
 - Baseplate pockets have the 0.7 / 1.8 / 2.15 mm profile, with a 0.2 mm flat on each ridge instead of a knife edge.
 
-Not built yet: screw holes, weighted or magnet baseplates, half-pitch grids, and different divider heights.
+Not built yet: screw holes, weighted baseplates, half-pitch grids, and different divider heights.
 
 Every tapered surface is a 45 degree extrude of a rounded rectangle, so each feature can be opened and edited afterwards. The sizes are plain numbers: to change the grid, run the plugin again.
 
