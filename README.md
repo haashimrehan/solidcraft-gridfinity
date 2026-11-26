@@ -24,7 +24,9 @@ The **Plugins > Gridfinity** menu then has two entries.
 | Height | 3 | Height units of 7 mm, without the stacking lip (2 to 20) |
 | Wall thickness | 1.2 mm | Walls and dividers (0.8 to 2.4 mm) |
 | Stacking lip | on | A lip on the rim that the feet of another bin sit in |
-| Magnet holes | on | Four 6.5 x 2.4 mm pockets under every cell, for 6 x 2 mm magnets |
+| Magnet holes | on | Four pockets under every cell, 13 mm from its centre |
+| Magnet size | 6x2 | The magnets, diameter x thickness in mm: 5x2, 6x2, 6x3, 8x2 or 8x3. Each pocket is 0.5 mm wider and 0.4 mm deeper than the magnet. |
+| Magnet hole diameter / depth | 6.5 / 2.4 mm | With magnet size *custom*: the pocket itself (3 to 8.5 mm across, 1 to 4 mm deep) |
 | Compartments along X / Y | 1 / 1 | Evenly spaced dividers (1 to 8 each way) |
 | Scoop | off | A curved ramp along the front wall, so small parts slide out |
 | Label tab | off | A shelf along the back wall with a 45 degree underside |
@@ -35,6 +37,11 @@ The bin is centred on the origin and stands on Z 0, the way it prints.
 
 Width and depth in grid units (1 to 6 each). A plain frame of pockets, 4.65 mm tall.
 
+| Option | Default | Meaning |
+|---|---|---|
+| Magnet holes | off | A solid floor under the pockets, with four magnet pockets in every cell, 13 mm from its centre: right under the magnets of a bin. The floor is the pocket depth plus 0.6 mm, so with the default pockets it is 3 mm and the plate 7.65 mm tall. |
+| Magnet size, hole diameter / depth | 6x2 | As for bins |
+
 ## What it builds
 
 - Outer size `42 n - 0.5` mm with 3.75 mm corners; feet with the 0.8 / 1.8 / 2.15 mm profile; a 7 mm floor.
@@ -42,7 +49,7 @@ Width and depth in grid units (1 to 6 each). A plain frame of pockets, 4.65 mm t
 - Dividers, the label tab and the scoop stop 1 mm under the lip, clear of the feet of a bin stacked on top.
 - Baseplate pockets have the 0.7 / 1.8 / 2.15 mm profile, with a 0.2 mm flat on each ridge instead of a knife edge.
 
-Not built yet: screw holes, weighted or magnet baseplates, half-pitch grids, and different divider heights.
+Not built yet: screw holes, weighted baseplates, half-pitch grids, and different divider heights.
 
 Every tapered surface is a 45 degree extrude of a rounded rectangle, so each feature can be opened and edited afterwards. The sizes are plain numbers: to change the grid, run the plugin again.
 
